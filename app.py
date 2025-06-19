@@ -3,15 +3,12 @@ from PIL import Image as PILImage, ImageDraw
 import os
 import numpy as np
 import onnxruntime
-from feedback_data_onnx import feedback_data  # 🔁 New feedback integration
+from feedback_data_onnx import feedback_data  # NEW
 
-# Set up the Streamlit application title
-st.title("🛠 Geotechnical Fault Detection Web App (ONNX + Feedback)")
+st.title("🛠 Geotechnical Fault Detection (ONNX + Maintenance Feedback)")
 
-# Add a file uploader widget
 uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
 
-# Path to the exported ONNX model
 ONNX_MODEL_PATH = 'best.onnx'
 
 @st.cache_resource
@@ -24,10 +21,9 @@ def load_onnx_model(path):
             return session, input_name, output_name
         except Exception as e:
             st.error(f"Error loading ONNX model: {e}")
-            return None, None, None
     else:
-        st.error(f"ONNX model file not found at {path}")
-        return None, None, None
+        st.error(f"ONNX model not found at {path}")
+    return None, None, None
 
 session, input_name, output_name = load_onnx_model(ONNX_MODEL_PATH)
 
@@ -37,13 +33,12 @@ CLASS_NAMES = [
     'wall deformation', 'bad foundation', 'corrosion', 'slope deformation'
 ]
 
-# Begin prediction
 if uploaded_file is not None:
     image = PILImage.open(uploaded_file).convert('RGB')
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
     if session:
-        st.write("🔍 Running inference using ONNX model...")
+        st.write("🔍 Running inference...")
         img = np.array(image)
         img_resized = PILImage.fromarray(img).resize((640, 640))
         img_resized = np.array(img_resized)
@@ -87,29 +82,30 @@ if uploaded_file is not None:
 
                 if class_id not in colors:
                     colors[class_id] = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
-
                 color = colors[class_id]
+
                 draw.rectangle([(box[0], box[1]), (box[2], box[3])], outline=color, width=2)
                 draw.text((box[0], box[1]), label, fill=color)
 
-                # 🧠 Maintenance Feedback
+                # 💬 Feedback block
                 fault_key = class_name.lower().strip()
-                feedback = feedback_data.get(fault_key, {})
-
+                feedback = feedback_data.get(fault_key)
                 if feedback:
                     st.markdown(f"### 🧱 Fault: `{class_name}`")
-                    st.markdown(f"📊 **Condition Score**: `{feedback.get('score')}` — Severity: `{feedback.get('severity')}`")
-                    st.markdown(f"🛠 **Recommendation**: {feedback.get('recommendation')}")
-                    st.markdown(f"🔥 **Priority**: `{feedback.get('priority')}`")
+                    st.markdown(f"📊 **Score**: `{feedback['score']}` — **Severity**: `{feedback['severity']}`")
+                    st.markdown(f"🛠 **Recommendation**: {feedback['recommendation']}")
+                    st.markdown(f"🔥 **Priority**: `{feedback['priority']}`")
                     st.markdown("---")
+                else:
+                    st.markdown(f"⚠️ No feedback found for `{class_name}`")
 
-            st.write("✅ Inference Results:")
-            st.image(image, caption="Detected Faults", use_column_width=True)
+            st.image(image, caption="Detected Results", use_column_width=True)
 
         except Exception as e:
-            st.error(f"❌ Error during ONNX inference or postprocessing: {e}")
+            st.error(f"❌ Error during ONNX inference or processing: {e}")
+
     else:
-        st.warning("⚠️ Model could not be loaded. Please check ONNX path.")
+        st.warning("⚠️ Model session is not active.")
 
 st.write("---")
-st.write("Built with ❤️ using YOLOv8 ONNX and Streamlit.")
+st.write("🔗 Powered by YOLOv8 ONNX + Streamlit + Maintenance Intelligence")
